@@ -7,10 +7,9 @@ import os
 import json
 import re
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import google.generativeai as genai
 
 app = FastAPI(
@@ -30,27 +29,6 @@ app.add_middleware(
 
 # In-memory storage for history
 analysis_history: List[dict] = []
-
-# Pydantic models
-class AnalyzeRequest(BaseModel):
-    answerText: str
-    contextType: str  # "legal" | "finance" | "compliance"
-    voiceMode: bool = False
-
-class Issue(BaseModel):
-    snippet: str
-    riskType: str  # "hallucination" | "uncertain" | "compliance-risk"
-    explanation: str
-    humanCheckHint: str
-
-class AnalyzeResponse(BaseModel):
-    score: int
-    label: str  # "High" | "Medium" | "Low"
-    issues: List[Issue]
-    complianceReport: str
-    ndaauditNote: str
-    voiceSummary: Optional[str] = None
-    timestamp: str
 
 # System prompt for VibeTrust AI Guardian
 SYSTEM_PROMPT = """You are 'VibeTrust AI Guardian', an advanced AI trust and compliance reviewer designed for enterprise use in high-stakes domains like legal, financial, and regulatory compliance.
@@ -300,17 +278,22 @@ def root():
     }
 
 
-@app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze_content(request: AnalyzeRequest):
+@app.post("/analyze")
+async def analyze_content(request: Dict[str, Any]):
     """
     Analyze AI-generated content for trust, hallucinations, and compliance risks.
     Uses Google Gemini with multi-model consensus simulation, or Demo Mode if no API key.
     """
+    # Extract fields from request dict
+    answer_text = request.get("answerText", "").strip()
+    context_type = request.get("contextType", "").lower()
+    voice_mode = request.get("voiceMode", False)
+    
     # Validate input
-    if not request.answerText or len(request.answerText.strip()) < 10:
+    if not answer_text or len(answer_text) < 10:
         raise HTTPException(status_code=400, detail="Answer text must be at least 10 characters")
     
-    if request.contextType not in ["legal", "finance", "compliance"]:
+    if context_type not in ["legal", "finance", "compliance"]:
         raise HTTPException(status_code=400, detail="Invalid context type. Must be: legal, finance, or compliance")
     
     # Check for API key - use demo mode if not available
@@ -320,7 +303,7 @@ async def analyze_content(request: AnalyzeRequest):
     try:
         if use_demo_mode:
             # Demo mode - generate realistic mock analysis
-            analysis = generate_demo_analysis(request.answerText, request.contextType)
+            analysis = generate_demo_analysis(answer_text, context_type)
         else:
             # Real API mode
             genai.configure(api_key=api_key)
@@ -328,7 +311,7 @@ async def analyze_content(request: AnalyzeRequest):
             
             full_prompt = f"""{SYSTEM_PROMPT}
 
-{get_user_prompt(request.answerText, request.contextType)}"""
+{get_user_prompt(answer_text, context_type)}"""
             
             response = model.generate_content(
                 full_prompt,
@@ -343,31 +326,31 @@ async def analyze_content(request: AnalyzeRequest):
         
         # Generate voice summary if voice mode is enabled
         voice_summary = None
-        if request.voiceMode:
-            voice_summary = generate_voice_summary(analysis, request.contextType)
+        if voice_mode:
+            voice_summary = generate_voice_summary(analysis, context_type)
         
         # Create timestamp
         timestamp = datetime.now().isoformat()
         
-        # Build response
-        result = AnalyzeResponse(
-            score=analysis.get("score", 50),
-            label=analysis.get("label", "Medium"),
-            issues=[Issue(**issue) for issue in analysis.get("issues", [])],
-            complianceReport=analysis.get("complianceReport", ""),
-            ndaauditNote=analysis.get("ndaauditNote", ""),
-            voiceSummary=voice_summary,
-            timestamp=timestamp
-        )
+        # Build response as dict
+        result = {
+            "score": analysis.get("score", 50),
+            "label": analysis.get("label", "Medium"),
+            "issues": analysis.get("issues", []),
+            "complianceReport": analysis.get("complianceReport", ""),
+            "ndaauditNote": analysis.get("ndaauditNote", ""),
+            "voiceSummary": voice_summary,
+            "timestamp": timestamp
+        }
         
         # Store in history (keep last 50)
         history_entry = {
             "timestamp": timestamp,
-            "contextType": request.contextType,
-            "label": result.label,
-            "score": result.score,
-            "inputPreview": request.answerText[:40] + "..." if len(request.answerText) > 40 else request.answerText,
-            "voiceMode": request.voiceMode
+            "contextType": context_type,
+            "label": result.get("label", "Medium"),
+            "score": result.get("score", 0),
+            "inputPreview": answer_text[:40] + "..." if len(answer_text) > 40 else answer_text,
+            "voiceMode": voice_mode
         }
         analysis_history.insert(0, history_entry)
         if len(analysis_history) > 50:
