@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeTrust AI Guardian</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .score-high {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .score-medium {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .score-low {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .score-display {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .label {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .label-high {
+            background: #28a745;
+            color: white;
+        }
+        .label-medium {
+            background: #ffc107;
+            color: #333;
+        }
+        .label-low {
+            background: #dc3545;
+            color: white;
+        }
+        .issues {
+            margin-top: 20px;
+        }
+        .issue {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+        .issue h4 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .issue p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ VibeTrust AI Guardian</h1>
+        <p class="subtitle">AI Trust & Compliance Checker for High-Stakes GenAI Outputs</p>
+        
+        <form id="analyzeForm">
+            <div class="form-group">
+                <label for="contextType">Context Type:</label>
+                <select id="contextType" required>
+                    <option value="legal">Legal / Contract Review</option>
+                    <option value="finance">Financial / Audit / Risk</option>
+                    <option value="compliance">Policy / Regulatory Compliance</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="answerText">AI-Generated Content to Analyze:</label>
+                <textarea id="answerText" placeholder="Paste the AI-generated content you want to analyze here..." required></textarea>
+            </div>
+            
+            <button type="submit" id="analyzeBtn">Analyze Content</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing content...</p>
+        </div>
+        
+        <div class="result" id="result">
+            <div id="scoreDisplay"></div>
+            <div id="complianceReport"></div>
+            <div class="issues" id="issues"></div>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('analyzeForm');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const answerText = document.getElementById('answerText').value;
+            const contextType = document.getElementById('contextType').value;
+            
+            // Show loading, hide result
+            loading.classList.add('show');
+            result.classList.remove('show');
+            analyzeBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        answerText: answerText,
+                        contextType: contextType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Display results
+                displayResults(data);
+                
+            } catch (error) {
+                alert('Error analyzing content: ' + error.message);
+            } finally {
+                loading.classList.remove('show');
+                analyzeBtn.disabled = false;
+            }
+        });
+        
+        function displayResults(data) {
+            const score = data.score;
+            const label = data.label;
+            
+            // Score display
+            const scoreClass = label === 'High' ? 'score-high' : (label === 'Medium' ? 'score-medium' : 'score-low');
+            const labelClass = label === 'High' ? 'label-high' : (label === 'Medium' ? 'label-medium' : 'label-low');
+            
+            document.getElementById('scoreDisplay').innerHTML = `
+                <span class="label ${labelClass}">${label} Trust</span>
+                <div class="score-display" style="color: ${label === 'High' ? '#28a745' : (label === 'Medium' ? '#ffc107' : '#dc3545')}">
+                    ${score}/100
+                </div>
+            `;
+            
+            // Compliance report
+            document.getElementById('complianceReport').innerHTML = `
+                <h3>Compliance Report</h3>
+                <p>${data.complianceReport}</p>
+            `;
+            
+            // Issues
+            const issuesDiv = document.getElementById('issues');
+            if (data.issues && data.issues.length > 0) {
+                issuesDiv.innerHTML = '<h3>Identified Issues</h3>';
+                data.issues.forEach(issue => {
+                    issuesDiv.innerHTML += `
+                        <div class="issue">
+                            <h4>${issue.riskType.toUpperCase()}</h4>
+                            <p><strong>Snippet:</strong> "${issue.snippet}"</p>
+                            <p><strong>Explanation:</strong> ${issue.explanation}</p>
+                            <p><strong>Action Required:</strong> ${issue.humanCheckHint}</p>
+                        </div>
+                    `;
+                });
+            }
+            
+            result.className = `result show ${scoreClass}`;
+        }
+    </script>
+</body>
+</html>
+
