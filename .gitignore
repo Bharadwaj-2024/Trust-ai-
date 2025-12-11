@@ -31,3 +31,6 @@ npm-debug.log*
 # Cache
 .cache/
 .pytest_cache/
+
+# Exclude frontend from deployment
+frontend/
