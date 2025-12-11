@@ -36,9 +36,16 @@ import {
   ShieldCheck,
   ExternalLink,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar,
+  Upload,
+  FileUp,
+  Zap,
+  SplitSquareHorizontal
 } from 'lucide-react';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { analyzeContent, getStats } from './api';
 import {
   AnalyzeResponse,
@@ -82,6 +89,20 @@ function App() {
   const [complianceRules, setComplianceRules] = useState<string[]>(['GDPR', 'SOC2']);
   const [customRuleInput, setCustomRuleInput] = useState('');
   const [showSourceVerification, setShowSourceVerification] = useState(true);
+  
+  // New feature states
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [comparisonText, setComparisonText] = useState('');
+  const [comparisonResult, setComparisonResult] = useState<AnalyzeResponse | null>(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchTexts, setBatchTexts] = useState<string[]>(['', '']);
+  const [batchResults, setBatchResults] = useState<AnalyzeResponse[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [realTimeRisk, setRealTimeRisk] = useState<'low' | 'medium' | 'high' | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Voice capture state
   const [isListening, setIsListening] = useState(false);
@@ -453,6 +474,187 @@ Human Check: ${issue.humanCheckHint}`;
 
   const { riskData, trendData } = getChartData();
 
+  // Export to Excel
+  const handleExportExcel = () => {
+    if (!history.length) return;
+    
+    const excelData = history.map((entry, index) => ({
+      'S.No': index + 1,
+      'Date': new Date(entry.timestamp).toLocaleDateString(),
+      'Time': new Date(entry.timestamp).toLocaleTimeString(),
+      'Context Type': entry.contextType.toUpperCase(),
+      'Trust Score': entry.score,
+      'Risk Level': entry.label,
+      'Input Preview': entry.inputPreview,
+      'Issues Count': entry.fullResult?.issues.length || 0,
+      'Voice Mode': entry.voiceMode ? 'Yes' : 'No'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 5 }, { wch: 12 }, { wch: 10 }, { wch: 15 },
+      { wch: 12 }, { wch: 12 }, { wch: 40 }, { wch: 12 }, { wch: 10 }
+    ];
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Analysis History');
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(data, `vibetrust-history-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // Get heatmap data
+  const getHeatmapData = () => {
+    const days: { [key: string]: { count: number; highRisk: number; date: Date } } = {};
+    const today = new Date();
+    
+    // Initialize last 35 days
+    for (let i = 34; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const key = date.toISOString().split('T')[0];
+      days[key] = { count: 0, highRisk: 0, date };
+    }
+    
+    // Fill in history data
+    history.forEach(entry => {
+      const key = new Date(entry.timestamp).toISOString().split('T')[0];
+      if (days[key]) {
+        days[key].count++;
+        if (entry.label === 'Low') days[key].highRisk++;
+      }
+    });
+    
+    return Object.entries(days).map(([key, value]) => ({
+      date: key,
+      count: value.count,
+      highRisk: value.highRisk,
+      dayOfWeek: value.date.getDay(),
+      weekNum: Math.floor((34 - Math.floor((today.getTime() - value.date.getTime()) / (1000 * 60 * 60 * 24))) / 7)
+    }));
+  };
+
+  // Real-time risk assessment
+  useEffect(() => {
+    if (!answerText || answerText.length < 20) {
+      setRealTimeRisk(null);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      const text = answerText.toLowerCase();
+      const riskIndicators = [
+        'guaranteed', 'always', 'never', 'definitely', '100%',
+        'absolutely certain', 'no risk', 'impossible', 'perfect'
+      ];
+      const uncertainIndicators = [
+        'may', 'might', 'could', 'possibly', 'perhaps',
+        'seems', 'appears', 'likely', 'probably'
+      ];
+      
+      const riskCount = riskIndicators.filter(ind => text.includes(ind)).length;
+      const uncertainCount = uncertainIndicators.filter(ind => text.includes(ind)).length;
+      
+      if (riskCount >= 2) setRealTimeRisk('high');
+      else if (riskCount >= 1 || uncertainCount >= 3) setRealTimeRisk('medium');
+      else if (answerText.length > 50) setRealTimeRisk('low');
+      else setRealTimeRisk(null);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [answerText]);
+
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadedFile(file);
+    
+    // Read text files directly
+    if (file.type === 'text/plain') {
+      const text = await file.text();
+      setAnswerText(text);
+    } else if (file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+      // For PDF/Word, show placeholder (real implementation would need pdf.js or mammoth.js)
+      setAnswerText(`[Content extracted from: ${file.name}]\n\nNote: For full PDF/Word parsing, server-side processing is recommended. Paste the relevant text content here for analysis.`);
+    }
+  };
+
+  // Handle comparison analysis
+  const handleComparisonSubmit = async () => {
+    if (!answerText.trim() || !comparisonText.trim()) {
+      setError('Please enter text in both panels for comparison');
+      return;
+    }
+    
+    setLoading(true);
+    setComparisonLoading(true);
+    setError(null);
+    
+    try {
+      const [result1, result2] = await Promise.all([
+        analyzeContent({ answerText, contextType, voiceMode: false }),
+        analyzeContent({ answerText: comparisonText, contextType, voiceMode: false })
+      ]);
+      
+      setResult(result1);
+      setComparisonResult(result2);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Comparison failed');
+    } finally {
+      setLoading(false);
+      setComparisonLoading(false);
+    }
+  };
+
+  // Handle batch analysis
+  const handleBatchSubmit = async () => {
+    const validTexts = batchTexts.filter(t => t.trim().length > 10);
+    if (validTexts.length < 2) {
+      setError('Please enter at least 2 texts for batch analysis');
+      return;
+    }
+    
+    setBatchLoading(true);
+    setError(null);
+    
+    try {
+      const results = await Promise.all(
+        validTexts.map(text => analyzeContent({ answerText: text, contextType, voiceMode: false }))
+      );
+      setBatchResults(results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Batch analysis failed');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  // Add batch text field
+  const addBatchField = () => {
+    if (batchTexts.length < 5) {
+      setBatchTexts([...batchTexts, '']);
+    }
+  };
+
+  // Update batch text
+  const updateBatchText = (index: number, value: string) => {
+    const newTexts = [...batchTexts];
+    newTexts[index] = value;
+    setBatchTexts(newTexts);
+  };
+
+  // Remove batch text field
+  const removeBatchField = (index: number) => {
+    if (batchTexts.length > 2) {
+      setBatchTexts(batchTexts.filter((_, i) => i !== index));
+    }
+  };
+
   return (
     <div className="app">
       {/* Header */}
@@ -569,6 +771,68 @@ Human Check: ${issue.humanCheckHint}`;
                     />
                   </LineChart>
                 </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Feature Toggles Row */}
+          <div className="feature-toggles">
+            <button 
+              className={`feature-toggle-btn ${showHeatmap ? 'active' : ''}`}
+              onClick={() => setShowHeatmap(!showHeatmap)}
+            >
+              <Calendar size={16} />
+              Risk Heatmap
+            </button>
+            <button 
+              className={`feature-toggle-btn ${comparisonMode ? 'active' : ''}`}
+              onClick={() => { setComparisonMode(!comparisonMode); setBatchMode(false); }}
+            >
+              <SplitSquareHorizontal size={16} />
+              Compare Mode
+            </button>
+            <button 
+              className={`feature-toggle-btn ${batchMode ? 'active' : ''}`}
+              onClick={() => { setBatchMode(!batchMode); setComparisonMode(false); }}
+            >
+              <Layers size={16} />
+              Batch Analysis
+            </button>
+            <button 
+              className="feature-toggle-btn"
+              onClick={handleExportExcel}
+              disabled={!history.length}
+            >
+              <FileSpreadsheet size={16} />
+              Export Excel
+            </button>
+          </div>
+
+          {/* Risk Heatmap Calendar */}
+          {showHeatmap && (
+            <div className="heatmap-container">
+              <h4 className="heatmap-title">
+                <Calendar size={18} />
+                Risk Heatmap (Last 35 Days)
+              </h4>
+              <div className="heatmap-grid">
+                {getHeatmapData().map((day, i) => (
+                  <div 
+                    key={i}
+                    className={`heatmap-cell ${
+                      day.count === 0 ? 'empty' : 
+                      day.highRisk > 0 ? 'high-risk' : 
+                      day.count > 2 ? 'active' : 'low'
+                    }`}
+                    title={`${day.date}: ${day.count} checks, ${day.highRisk} high-risk`}
+                  />
+                ))}
+              </div>
+              <div className="heatmap-legend">
+                <span><div className="legend-box empty"></div> No activity</span>
+                <span><div className="legend-box low"></div> Low activity</span>
+                <span><div className="legend-box active"></div> Active</span>
+                <span><div className="legend-box high-risk"></div> High-risk detected</span>
               </div>
             </div>
           )}
@@ -749,45 +1013,186 @@ Human Check: ${issue.humanCheckHint}`;
                 </button>
               )}
 
-              <div className="form-group">
-                <label className="form-label">
-                  {voiceMode ? 'Transcribed AI Response' : 'Paste AI-generated answer here'}
-                </label>
-                <div className="textarea-wrapper">
-                  <textarea
-                    className="form-textarea"
-                    value={answerText}
-                    onChange={(e) => setAnswerText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit();
-                      }
-                    }}
-                    placeholder={voiceMode 
-                      ? 'Spoken AI response will appear here after voice capture...'
-                      : 'Paste the AI-generated content you want to analyze for trust, hallucinations, and compliance risks...'
-                    }
-                  />
+              {/* File Upload */}
+              <div className="file-upload-section">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".txt,.pdf,.docx"
+                  style={{ display: 'none' }}
+                />
+                <button 
+                  className="file-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload size={16} />
+                  Upload Document
+                </button>
+                {uploadedFile && (
+                  <span className="uploaded-file-name">
+                    <FileUp size={14} />
+                    {uploadedFile.name}
+                  </span>
+                )}
+              </div>
+
+              {/* Batch Mode UI */}
+              {batchMode && (
+                <div className="batch-mode-panel">
+                  <h4><Layers size={16} /> Batch Analysis ({batchTexts.length} texts)</h4>
+                  {batchTexts.map((text, index) => (
+                    <div key={index} className="batch-text-item">
+                      <span className="batch-number">#{index + 1}</span>
+                      <textarea
+                        className="batch-textarea"
+                        value={text}
+                        onChange={(e) => updateBatchText(index, e.target.value)}
+                        placeholder={`Enter text ${index + 1} for batch analysis...`}
+                      />
+                      {batchTexts.length > 2 && (
+                        <button 
+                          className="batch-remove-btn"
+                          onClick={() => removeBatchField(index)}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="batch-actions">
+                    <button 
+                      className="batch-add-btn"
+                      onClick={addBatchField}
+                      disabled={batchTexts.length >= 5}
+                    >
+                      + Add Text
+                    </button>
+                    <button 
+                      className={`batch-submit-btn ${batchLoading ? 'loading' : ''}`}
+                      onClick={handleBatchSubmit}
+                      disabled={batchLoading}
+                    >
+                      {batchLoading ? <Loader2 size={16} className="spinner" /> : <Zap size={16} />}
+                      {batchLoading ? 'Analyzing...' : 'Run Batch Analysis'}
+                    </button>
+                  </div>
+                  
+                  {/* Batch Results */}
+                  {batchResults.length > 0 && (
+                    <div className="batch-results">
+                      <h4>Batch Results Summary</h4>
+                      <div className="batch-results-grid">
+                        {batchResults.map((res, i) => (
+                          <div key={i} className={`batch-result-card ${res.label.toLowerCase()}`}>
+                            <span className="batch-result-num">#{i + 1}</span>
+                            <span className="batch-result-score">{res.score}</span>
+                            <span className={`batch-result-label ${res.label.toLowerCase()}`}>{res.label}</span>
+                            <span className="batch-result-issues">{res.issues.length} issues</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Comparison Mode UI */}
+              {comparisonMode && !batchMode && (
+                <div className="comparison-panel">
+                  <h4><SplitSquareHorizontal size={16} /> Side-by-Side Comparison</h4>
+                  <div className="comparison-grid">
+                    <div className="comparison-col">
+                      <label>Text A</label>
+                      <textarea
+                        className="comparison-textarea"
+                        value={answerText}
+                        onChange={(e) => setAnswerText(e.target.value)}
+                        placeholder="Enter first text to compare..."
+                      />
+                      {result && (
+                        <div className={`comparison-result ${result.label.toLowerCase()}`}>
+                          <span className="comp-score">{result.score}</span>
+                          <span className="comp-label">{result.label}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="comparison-col">
+                      <label>Text B</label>
+                      <textarea
+                        className="comparison-textarea"
+                        value={comparisonText}
+                        onChange={(e) => setComparisonText(e.target.value)}
+                        placeholder="Enter second text to compare..."
+                      />
+                      {comparisonResult && (
+                        <div className={`comparison-result ${comparisonResult.label.toLowerCase()}`}>
+                          <span className="comp-score">{comparisonResult.score}</span>
+                          <span className="comp-label">{comparisonResult.label}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <button 
-                    className={`submit-btn-inline ${loading ? 'loading' : ''}`}
-                    onClick={handleSubmit}
+                    className={`comparison-submit-btn ${loading ? 'loading' : ''}`}
+                    onClick={handleComparisonSubmit}
                     disabled={loading}
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 size={18} className="spinner" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Search size={18} />
-                        Run Trust Check
-                      </>
-                    )}
+                    {loading ? <Loader2 size={16} className="spinner" /> : <GitCompare size={16} />}
+                    {loading ? 'Comparing...' : 'Compare Both Texts'}
                   </button>
                 </div>
-              </div>
+              )}
+
+              {/* Standard Input (when not in batch or comparison mode) */}
+              {!batchMode && !comparisonMode && (
+                <div className="form-group">
+                  <label className="form-label">
+                    {voiceMode ? 'Transcribed AI Response' : 'Paste AI-generated answer here'}
+                    {realTimeRisk && (
+                      <span className={`realtime-indicator ${realTimeRisk}`}>
+                        <Zap size={12} />
+                        {realTimeRisk === 'high' ? 'High Risk Detected' : 
+                         realTimeRisk === 'medium' ? 'Moderate Risk' : 'Low Risk'}
+                      </span>
+                    )}
+                  </label>
+                  <div className="textarea-wrapper">
+                    <textarea
+                      className={`form-textarea ${realTimeRisk ? `risk-${realTimeRisk}` : ''}`}
+                      value={answerText}
+                      onChange={(e) => setAnswerText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSubmit();
+                        }
+                      }}
+                      placeholder={voiceMode 
+                        ? 'Spoken AI response will appear here after voice capture...'
+                        : 'Paste the AI-generated content you want to analyze for trust, hallucinations, and compliance risks...'
+                      }
+                    />
+                    <button 
+                      className={`submit-btn-inline ${loading ? 'loading' : ''}`}
+                      onClick={handleSubmit}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 size={18} className="spinner" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Search size={18} />
+                          Run Trust Check
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <div style={{ color: '#f87171', fontSize: '0.875rem', marginTop: '1rem' }}>

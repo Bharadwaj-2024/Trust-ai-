@@ -1897,3 +1897,562 @@ body {
     width: 100%;
   }
 }
+
+/* ============================================
+   NEW FEATURES STYLES
+   ============================================ */
+
+/* Feature Toggle Buttons Row */
+.feature-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.feature-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feature-toggle-btn:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+.feature-toggle-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.feature-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Risk Heatmap Calendar */
+.heatmap-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.heatmap-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 1rem;
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--bg-dark);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.1);
+}
+
+.heatmap-cell.empty {
+  background: var(--bg-dark);
+  opacity: 0.3;
+}
+
+.heatmap-cell.low {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.heatmap-cell.active {
+  background: rgba(16, 185, 129, 0.6);
+}
+
+.heatmap-cell.high-risk {
+  background: rgba(239, 68, 68, 0.7);
+}
+
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.heatmap-legend span {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.legend-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.legend-box.empty { background: var(--bg-dark); opacity: 0.3; }
+.legend-box.low { background: rgba(16, 185, 129, 0.3); }
+.legend-box.active { background: rgba(16, 185, 129, 0.6); }
+.legend-box.high-risk { background: rgba(239, 68, 68, 0.7); }
+
+/* File Upload Section */
+.file-upload-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.file-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-dark);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.file-upload-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  border-style: solid;
+}
+
+.uploaded-file-name {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--success);
+}
+
+/* Real-time Risk Indicator */
+.realtime-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+.realtime-indicator.low {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.realtime-indicator.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+
+.realtime-indicator.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.form-textarea.risk-low {
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.form-textarea.risk-medium {
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.form-textarea.risk-high {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Batch Mode Panel */
+.batch-mode-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.batch-mode-panel h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.batch-text-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.batch-number {
+  padding: 0.375rem 0.5rem;
+  background: var(--primary);
+  color: white;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  min-width: 28px;
+  text-align: center;
+}
+
+.batch-textarea {
+  flex: 1;
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.batch-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.batch-remove-btn {
+  padding: 0.375rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.batch-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.batch-add-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-add-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.batch-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.batch-submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.batch-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Batch Results */
+.batch-results {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.batch-results h4 {
+  margin-bottom: 1rem;
+}
+
+.batch-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.batch-result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-dark);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.batch-result-card.high {
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.batch-result-card.medium {
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.batch-result-card.low {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.batch-result-num {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.batch-result-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.batch-result-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  margin: 0.25rem 0;
+}
+
+.batch-result-label.high { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+.batch-result-label.medium { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+.batch-result-label.low { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+.batch-result-issues {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* Comparison Mode Panel */
+.comparison-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+.comparison-panel h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.comparison-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comparison-col label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.comparison-textarea {
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  min-height: 120px;
+  resize: vertical;
+}
+
+.comparison-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.comparison-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.comparison-result.high {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.comparison-result.medium {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.comparison-result.low {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.comp-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.comp-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.comparison-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.comparison-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.comparison-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Light Theme for New Features */
+[data-theme="light"] .heatmap-container,
+[data-theme="light"] .batch-mode-panel,
+[data-theme="light"] .comparison-panel {
+  background: #f8fafc;
+}
+
+[data-theme="light"] .heatmap-cell.empty {
+  background: #e2e8f0;
+}
+
+[data-theme="light"] .batch-textarea,
+[data-theme="light"] .comparison-textarea {
+  background: white;
+}
+
+[data-theme="light"] .batch-result-card,
+[data-theme="light"] .comparison-result {
+  background: white;
+}
+
+[data-theme="light"] .file-upload-btn {
+  background: #f1f5f9;
+}
+
+/* Responsive for New Features */
+@media (max-width: 768px) {
+  .feature-toggles {
+    flex-direction: column;
+  }
+  
+  .feature-toggle-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .batch-results-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .heatmap-grid {
+    gap: 2px;
+  }
+}
