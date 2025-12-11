@@ -1,6 +1,9 @@
-frontend/
-node_modules/
+frontend
+node_modules
 *.md
-.git/
+.git
 .gitignore
-render.yaml
+package.json
+package-lock.json
+tsconfig.json
+vite.config.ts
