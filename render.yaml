@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: vibetrust-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
