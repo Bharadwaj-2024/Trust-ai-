@@ -1,9 +1,10 @@
-frontend
-node_modules
+frontend/
+frontend/**
+**/node_modules
+**/package.json
+**/package-lock.json
+**/tsconfig.json
+**/vite.config.ts
 *.md
 .git
 .gitignore
-package.json
-package-lock.json
-tsconfig.json
-vite.config.ts
