@@ -1,0 +1,19 @@
+# Ignore frontend files if any exist
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+*.log
+.git/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
